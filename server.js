@@ -210,6 +210,9 @@ app.post('/send-message', async (req, res) => {
 
     try {
         let cleanPhone = phone.replace(/[^0-9]/g, '');
+        if (cleanPhone.startsWith('0')) {
+            cleanPhone = cleanPhone.replace(/^0+/, '');
+        }
         if (cleanPhone.length === 10) {
             cleanPhone = '91' + cleanPhone;
         }
