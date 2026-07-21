@@ -189,17 +189,23 @@ setInterval(async () => {
 
 // REST API endpoint to send a message
 app.post('/send-message', async (req, res) => {
-    const { phone, message, session_id, franchise_id } = req.body;
-
+    const { phone, message, session_id } = req.body;
     if (!phone || !message) {
-        return res.status(400).json({ error: "Phone and message are required" });
+        return res.status(400).json({ error: "phone and message required" });
     }
 
-    const targetSessionId = sanitizeSessionId(session_id || franchise_id || 'main');
-    const session = await getOrCreateSession(targetSessionId);
+    let targetSessionId = sanitizeSessionId(session_id || 'main');
+    let session = sessions[targetSessionId];
 
-    if (session.connectionStatus !== 'connected' || !session.sock) {
-        return res.status(503).json({ error: `WhatsApp session [${targetSessionId}] is not connected` });
+    // Safety Fallback: If requested session is not connected, use any active connected session
+    if (!session || session.connectionStatus !== 'connected' || !session.sock) {
+        const connectedSession = Object.values(sessions).find(s => s.connectionStatus === 'connected' && s.sock);
+        if (connectedSession) {
+            session = connectedSession;
+            targetSessionId = connectedSession.sessionId;
+        } else {
+            return res.status(503).json({ error: "WhatsApp client is not connected. Please scan QR code in WhatsApp Setup." });
+        }
     }
 
     try {
